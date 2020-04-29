@@ -31,8 +31,8 @@ class env:
         
         env.snake = np.array([[x, yStart] for x in range(xStart, xEnd)])
         
-        env.mapState[env.snake[:,0], env.snake[:,1]] = 1 # Map is 1 where there is snake
-        
+        env.mapState[env.snake[:,0],  env.snake[:,1]]  = 1 # Map is 1 where there is snake
+        env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2 # Map is 2 where snake head is
         # Init the fruit position
         [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
         env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
@@ -111,15 +111,17 @@ class env:
         elif env.mapState[xNew, yNew] == 0:             # Normal case
     
             env.mapState[env.snake[0,0], env.snake[0,1]] = 0    # snake moves, oldest point return to 0 
-            env.snake = np.delete(env.snake, 0, axis=0)     # Erase the oldest position
-            env.mapState[env.snake[-1,0], env.snake[-1,1]] = 1  # update new point on map
-    
+            env.snake = np.delete(env.snake, 0, axis=0)         # Erase the oldest position
+            
+            env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2  # Update new head on map
+            env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
             env.printState(self)
     
         elif env.mapState[xNew, yNew] == 3:  # If snake reach a fruit
             # Do not erase oldest position
-            env.mapState[env.snake[-1,0], env.snake[-1,1]] = 1  # update new point on map
-       
+            env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2  # Update new point on map
+            env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
+            
             env.newFruit(self)      # Spawn a new fruit           
             env.score += 1          # Update score
             env.printState(self)    # Print the map
