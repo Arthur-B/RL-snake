@@ -45,9 +45,11 @@ class env:
         """
         
         # Need a solution for when the map is full (win)
-        
-        [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
-        env.mapState[xRandom, yRandom] = 2
+        if(np.argwhere(mapState==0).size == 0):
+            env.gameOver = 1
+        else:
+            [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
+            env.mapState[xRandom, yRandom] = 2
         
     def moveSnake(self, keyPressed):
         """
@@ -114,7 +116,7 @@ class env:
             env.mapState[env.snake[-1,0], env.snake[-1,1]] = 1  # update new point on map
        
             env.newFruit(self)      # Spawn a new fruit           
-            env.score += 1      # Update score
+            env.score += 1          # Update score
             env.printState(self)    # Print the map
 
         return env.mapState, env.score
@@ -124,7 +126,7 @@ class env:
 
 # Initialize the environment
 
-gameEnv = env()
+gameEnv = env(6,6)
 gameEnv.printState()
 
 # Game loop
