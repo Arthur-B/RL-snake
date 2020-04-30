@@ -1,0 +1,142 @@
+import numpy as np
+import random   # Can we get rid of that? In numpy probably
+
+
+class env:
+    def __init__(self, xSize=10, ySize=10):
+        
+        env.xSize, env.ySize = xSize, ySize
+        env.gameOver = 0
+        env.score = 0
+        
+        # Init the map
+        env.mapState = np.zeros((env.xSize, env.ySize), dtype=np.int) # Map is 0 where empty
+        
+        # Init the snake position and length
+        xStart  = int(np.rint(env.xSize / 4))
+        xEnd    = int(np.rint(env.xSize * 3/4))
+        yStart  = int(np.rint(env.ySize / 2)) - 1
+        
+        env.snake = np.array([[x, yStart] for x in range(xStart, xEnd)])
+        
+        env.mapState[env.snake[:,0],  env.snake[:,1]]  = 1 # Map is 1 where there is snake
+        env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2 # Map is 2 where snake head is
+        # Init the fruit position
+        [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
+        env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
+        
+    def reset(self):
+        env.gameOver = 0
+        env.score = 0
+        
+        # Init the map
+        env.mapState = np.zeros((env.xSize, env.ySize), dtype=np.int) # Map is 0 where empty
+        
+        # Init the snake position and length
+        xStart  = int(np.rint(env.xSize / 4))
+        xEnd    = int(np.rint(env.xSize * 3/4))
+        yStart  = int(np.rint(env.ySize / 2)) - 1
+        
+        env.snake = np.array([[x, yStart] for x in range(xStart, xEnd)])
+        
+        env.mapState[env.snake[:,0],  env.snake[:,1]]  = 1 # Map is 1 where there is snake
+        env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2 # Map is 2 where snake head is
+        # Init the fruit position
+        [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
+        env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
+        
+    def printState(self):
+        """
+        Print the map state: board, score, ...
+        """
+        print(env.mapState.T)
+        print("Score: {}".format(env.score))
+        
+    def newFruit(self):
+        """
+        Place a new fruit on the map
+        """
+        
+        # Need a solution for when the map is full (win)
+        if(np.argwhere(env.mapState==0).size == 0):
+            env.gameOver = 1
+        else:
+            [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
+            env.mapState[xRandom, yRandom] = 3
+        
+    def moveSnake(self, keyPressed):
+        """
+        Move the snake on the map and return the current state of the game for the agent.
+
+        Parameters
+        ----------
+        keyPressed : string ['a', 'w', 's', 'd']
+            The input direction on where to move the snake
+
+        Returns
+        -------
+        mapState: np.array
+            The state of the game
+        score
+            Score accumulated until this point
+        """
+        
+        if keyPressed == 'a':
+            xNew = env.snake[-1, 0] - 1
+            yNew = env.snake[-1, 1]
+        elif keyPressed == 'w': # Inverse up and down because we play in transpose
+            xNew = env.snake[-1, 0]
+            yNew = env.snake[-1, 1] - 1
+        elif keyPressed == 'd':
+            xNew = env.snake[-1, 0] + 1
+            yNew = env.snake[-1, 1]
+        elif keyPressed == 's':
+            xNew = env.snake[-1, 0]
+            yNew = env.snake[-1, 1] + 1
+    
+        # If we move in the forbidden direction (on the neck of the snake)
+        if [xNew, yNew] == [env.snake[-2, 0], env.snake[-2, 1]]:
+            xNew = env.snake[-1, 0] - (env.snake[-2, 0] - env.snake[-1, 0]) # We move forward
+            yNew = env.snake[-1, 1] - (env.snake[-2, 1] - env.snake[-1, 1])
+
+        # Check if out of bound
+    
+        xNew = np.mod(xNew, env.xSize)
+        yNew = np.mod(yNew, env.ySize)
+    
+        # Add new position snake
+    
+        env.snake = np.append(env.snake, [[xNew, yNew]], axis=0)     # Add the new position
+
+        # Update the map state
+        
+        
+        if env.mapState[xNew, yNew] == 1: # If stepping on another snake part
+    
+            env.reward = -1000      # RL reward
+            env.gameOver = 1
+            print("\nGame Over\nScore: {}".format(env.score))
+    
+        elif env.mapState[xNew, yNew] == 0:             # Normal case
+    
+            env.mapState[env.snake[0,0], env.snake[0,1]] = 0    # snake moves, oldest point return to 0 
+            env.snake = np.delete(env.snake, 0, axis=0)         # Erase the oldest position
+            
+            env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2  # Update new head on map
+            env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
+            
+            env.reward = -1     # Reward as in RL reward, empty move loose time
+            
+            env.printState(self)
+    
+        elif env.mapState[xNew, yNew] == 3:  # If snake reach a fruit
+            # Do not erase oldest position
+            env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2  # Update new point on map
+            env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
+            
+            env.newFruit(self)      # Spawn a new fruit
+            env.reward = 100        # Maybe need to be tuned
+            env.score += 1          # Update game score, different from RL reward
+            env.printState(self)    # Print the map
+
+        return env.mapState, env.reward
