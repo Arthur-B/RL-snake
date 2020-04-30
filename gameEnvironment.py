@@ -9,23 +9,30 @@ class env:
         env.gameOver = 0
         env.score = 0
         
-        # Init the map
+        # Initialize the map
         env.mapState = np.zeros((env.xSize, env.ySize), dtype=np.int) # Map is 0 where empty
         
-        # Init the snake position and length
+        # Initialize the snake position and length
         xStart  = int(np.rint(env.xSize / 4))
         xEnd    = int(np.rint(env.xSize * 3/4))
-        yStart  = int(np.rint(env.ySize / 2)) - 1
+        yStart  = int(np.rint(env.ySize / 2)) - 1 # Middle of screen
         
         env.snake = np.array([[x, yStart] for x in range(xStart, xEnd)])
         
-        env.mapState[env.snake[:,0],  env.snake[:,1]]  = 1 # Map is 1 where there is snake
+        env.mapState[env.snake[:,0],  env.snake[:,1]]  = 1 # Map is 1 where there snake body is
         env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2 # Map is 2 where snake head is
+        
         # Init the fruit position
         [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
         env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
         
     def reset(self):
+        
+        """
+        Put back into same state as initialized.
+
+        """
+        
         env.gameOver = 0
         env.score = 0
         
@@ -41,18 +48,24 @@ class env:
         
         env.mapState[env.snake[:,0],  env.snake[:,1]]  = 1 # Map is 1 where there is snake
         env.mapState[env.snake[-1,0], env.snake[-1,1]] = 2 # Map is 2 where snake head is
+        
         # Init the fruit position
         [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
         env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
+
         
     def printState(self):
+        
         """
         Print the map state: board, score, ...
         """
+        
         print(env.mapState.T)
         print("Score: {}".format(env.score))
-        
+ 
+       
     def newFruit(self):
+        
         """
         Place a new fruit on the map
         """
@@ -63,8 +76,10 @@ class env:
         else:
             [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
             env.mapState[xRandom, yRandom] = 3
+
         
     def moveSnake(self, keyPressed):
+        
         """
         Move the snake on the map and return the current state of the game for the agent.
 
@@ -101,15 +116,11 @@ class env:
         if [xNew, yNew] == [env.snake[-2, 0], env.snake[-2, 1]]:
             xNew = env.snake[-1, 0] - (env.snake[-2, 0] - env.snake[-1, 0]) # We move forward
             yNew = env.snake[-1, 1] - (env.snake[-2, 1] - env.snake[-1, 1])
-
-        # Check if out of bound
+            
+            xNew, yNew = xNew % env.xSize, yNew % env.ySize # Re-apply the modulo
     
-        xNew = np.mod(xNew, env.xSize)
-        yNew = np.mod(yNew, env.ySize)
-    
-        # Add new position snake
-    
-        env.snake = np.append(env.snake, [[xNew, yNew]], axis=0)     # Add the new position
+        # Add new position to the snake    
+        env.snake = np.append(env.snake, [[xNew, yNew]], axis=0)
 
         # Update the map state
         
@@ -129,8 +140,6 @@ class env:
             env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
             
             env.reward = -1     # Reward as in RL reward, empty move loose time
-            
-            env.printState(self)
     
         elif env.mapState[xNew, yNew] == 3:  # If snake reach a fruit
             # Do not erase oldest position
@@ -140,6 +149,5 @@ class env:
             env.newFruit(self)      # Spawn a new fruit
             env.reward = 100        # Maybe need to be tuned
             env.score += 1          # Update game score, different from RL reward
-            env.printState(self)    # Print the map
 
         return env.mapState, env.reward

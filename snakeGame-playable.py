@@ -1,6 +1,6 @@
-import sys, pygame
+import pygame
 from gameEnvironment import env # Import the game environment
-import numpy as np
+from numpy import argwhere
 
 #------------------------------------------------------------------------------
 # Draw the map state
@@ -10,9 +10,7 @@ def drawGrid(mapState, offset, blockSize, nbBlockx, nbBlocky, screen):
     """
     Draw the mapState given the specifications.
     """
-    # blockSize = 50
-    # offset = 100
-    
+        
     # Draw grid
     for x in range(nbBlockx):
         for y in range(nbBlocky):
@@ -21,19 +19,19 @@ def drawGrid(mapState, offset, blockSize, nbBlockx, nbBlocky, screen):
             pygame.draw.rect(screen, (140,140,140), rect, 1) # Width of 1, empty rectangle
     
     # Draw snake body        
-    for (x,y) in np.argwhere(gameEnv.mapState == 1):
+    for (x,y) in argwhere(gameEnv.mapState == 1):
         rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
                            blockSize, blockSize)
         pygame.draw.rect(screen, (222,132,82), rect)
             
     # Draw snake head   
-    for (x,y) in np.argwhere(gameEnv.mapState == 2):
+    for (x,y) in argwhere(gameEnv.mapState == 2):
         rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
                            blockSize, blockSize)
         pygame.draw.rect(screen, (197,78,82), rect)
     
     # Draw fruit
-    for (x,y) in np.argwhere(gameEnv.mapState == 3):
+    for (x,y) in argwhere(gameEnv.mapState == 3):
         rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
                            blockSize, blockSize)
         pygame.draw.rect(screen, (76,114,176), rect)
@@ -49,7 +47,7 @@ def getKeyPressed():
     """
     
     pygame.event.clear()
-    keyPressed=""
+    keyPressed = ""
 
     while keyPressed=="":
         event = pygame.event.wait()
@@ -57,7 +55,6 @@ def getKeyPressed():
         if event.type == pygame.QUIT:
             pygame.display.quit()
             pygame.quit()
-            sys.exit()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
                 keyPressed = 'w'
@@ -74,25 +71,28 @@ def getKeyPressed():
 # Game
 #==============================================================================
 
-sizeX, sizeY = 10,5
-blockSize = 50
-offset = 50
+#------------------------------------------------------------------------------
+# Initialize variables
 
-size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize)
+sizeX, sizeY = 10, 5    # Number of blocks width,height
+blockSize = 50          # Pixel width/height of a unit block
+offset = 50             # Pixel border
+
+size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize) # Overall size of screen 
 
 # Initialize the game environment
 
-gameEnv = env(sizeX,sizeY)
-gameEnv.printState()
+gameEnv = env(sizeX,sizeY)  # Initialize the map
+gameEnv.printState()        # Print underlying matrix of game
 
 # Initialize the game window
 
-screen = pygame.display.set_mode(size)
-screen.fill((255,255,255))
+screen = pygame.display.set_mode(size)  # Create game window of given size
+screen.fill((255,255,255))              # Fill map
 
 drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
 
-pygame.display.flip()
+pygame.display.flip()   # Update full display to screen
 
 #------------------------------------------------------------------------------
 # Game loop
@@ -103,12 +103,13 @@ while gameEnv.gameOver == 0:
     keyPressed = getKeyPressed()
     
     # Update the map state               
-    mapState, reward = gameEnv.moveSnake(keyPressed)
+    mapState, _ = gameEnv.moveSnake(keyPressed)
+    gameEnv.printState()    # Print underlying matrix of game
     
     # Update game window    
-    screen.fill((255,255,255))
-    drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
-    pygame.display.flip()
+    screen.fill((255,255,255))  # Reapply the background
+    drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen) # Apply the latest grid
+    pygame.display.flip()       # Update full display to screen
     
 #------------------------------------------------------------------------------
 # Exit
