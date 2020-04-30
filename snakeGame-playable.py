@@ -2,7 +2,7 @@ import sys, pygame
 from gameEnvironment import env # Import the game environment
 import numpy as np
 
-def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, color, screen):
+def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, screen):
     
     blockSizex = width /nbBlockx #Set the size of the grid block
     blockSizey = height / nbBlocky
@@ -12,25 +12,25 @@ def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, colo
         for y in range(nbBlocky):
             rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
                                blockSizex, blockSizey)
-            pygame.draw.rect(screen, color, rect, 1) # Width of 1, empty rectangle
+            pygame.draw.rect(screen, (140,140,140), rect, 1) # Width of 1, empty rectangle
     
     # Draw snake body        
     for (x,y) in np.argwhere(gameEnv.mapState == 1):
         rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
                            blockSizex, blockSizey)
-        pygame.draw.rect(screen, (125,125,125), rect)
+        pygame.draw.rect(screen, (222,132,82), rect)
             
     # Draw snake head   
     for (x,y) in np.argwhere(gameEnv.mapState == 2):
         rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
                            blockSizex, blockSizey)
-        pygame.draw.rect(screen, (200,200,200), rect)
+        pygame.draw.rect(screen, (197,78,82), rect)
     
     # Draw fruit
     for (x,y) in np.argwhere(gameEnv.mapState == 3):
         rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
                            blockSizex, blockSizey)
-        pygame.draw.rect(screen, (255,0,0), rect)
+        pygame.draw.rect(screen, (76,114,176), rect)
 
 #==============================================================================
 # Game
@@ -46,13 +46,10 @@ gameEnv.printState()
 size = width, height = 600, 600
 screen = pygame.display.set_mode(size)
 
-colorBackground = 0, 0, 0
-colorGrid       = 125, 125, 125
-
 grid = pygame.Rect(50,50,500,500)
 
-screen.fill(colorBackground)
-drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, (200, 200, 200), screen)
+screen.fill((255,255,255))
+drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, screen)
 pygame.display.flip()
 
 #------------------------------------------------------------------------------
@@ -88,8 +85,8 @@ while gameEnv.gameOver == 0:
     
     # Update graphic
     
-    screen.fill(colorBackground)
-    drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, (200, 200, 200), screen)
+    screen.fill((255,255,255))
+    drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, screen)
     pygame.display.flip()
     
 #------------------------------------------------------------------------------
