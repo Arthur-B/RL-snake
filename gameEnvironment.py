@@ -93,7 +93,10 @@ class env:
         elif keyPressed == 's':
             xNew = env.snake[-1, 0]
             yNew = env.snake[-1, 1] + 1
-    
+        
+        # Put (xNew, yNew) within the grid boundaries 
+        xNew, yNew = xNew % env.xSize, yNew % env.ySize
+        
         # If we move in the forbidden direction (on the neck of the snake)
         if [xNew, yNew] == [env.snake[-2, 0], env.snake[-2, 1]]:
             xNew = env.snake[-1, 0] - (env.snake[-2, 0] - env.snake[-1, 0]) # We move forward
