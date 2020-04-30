@@ -2,7 +2,14 @@ import sys, pygame
 from gameEnvironment import env # Import the game environment
 import numpy as np
 
+#------------------------------------------------------------------------------
+# Draw the map state
+
 def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, screen):
+    
+    """
+    Draw the mapState given the specifications.
+    """
     
     blockSizex = width /nbBlockx #Set the size of the grid block
     blockSizey = height / nbBlocky
@@ -32,6 +39,38 @@ def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, scre
                            blockSizex, blockSizey)
         pygame.draw.rect(screen, (76,114,176), rect)
 
+
+#------------------------------------------------------------------------------
+# Get key pressed
+
+def getKeyPressed():
+    
+    """
+    Wait until 'w', 'a', 's', 'd' is pressed and return the character.
+    """
+    
+    pygame.event.clear()
+    keyPressed=""
+
+    while keyPressed=="":
+        event = pygame.event.wait()
+         
+        if event.type == pygame.QUIT:
+            pygame.display.quit()
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_w:
+                keyPressed = 'w'
+            elif event.key == pygame.K_a:
+                keyPressed = 'a'
+            elif event.key == pygame.K_s:
+                keyPressed = 's'
+            elif event.key == pygame.K_d:
+                keyPressed = 'd'
+    return keyPressed
+
+
 #==============================================================================
 # Game
 #==============================================================================
@@ -57,34 +96,13 @@ pygame.display.flip()
 
 while gameEnv.gameOver == 0:
     
-    # Wait for a key press
+    # Wait for a key press   
+    keyPressed = getKeyPressed()
     
-    pygame.event.clear()
-    keyPressed=""
-
-    while keyPressed=="":
-        event = pygame.event.wait()
-         
-        if event.type == pygame.QUIT:
-            pygame.display.quit()
-            pygame.quit()
-            sys.exit()
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w:
-                keyPressed = 'w'
-            elif event.key == pygame.K_a:
-                keyPressed = 'a'
-            elif event.key == pygame.K_s:
-                keyPressed = 's'
-            elif event.key == pygame.K_d:
-                keyPressed = 'd'
-    
-    # Update the map state
-                
+    # Update the map state               
     mapState, reward = gameEnv.moveSnake(keyPressed)
     
-    # Update graphic
-    
+    # Update game window    
     screen.fill((255,255,255))
     drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, screen)
     pygame.display.flip()
