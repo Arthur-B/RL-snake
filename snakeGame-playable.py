@@ -5,38 +5,37 @@ import numpy as np
 #------------------------------------------------------------------------------
 # Draw the map state
 
-def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, screen):
+def drawGrid(mapState, offset, blockSize, nbBlockx, nbBlocky, screen):
     
     """
     Draw the mapState given the specifications.
     """
-    
-    blockSizex = width /nbBlockx #Set the size of the grid block
-    blockSizey = height / nbBlocky
+    # blockSize = 50
+    # offset = 100
     
     # Draw grid
     for x in range(nbBlockx):
         for y in range(nbBlocky):
-            rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
-                               blockSizex, blockSizey)
+            rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
+                               blockSize, blockSize)
             pygame.draw.rect(screen, (140,140,140), rect, 1) # Width of 1, empty rectangle
     
     # Draw snake body        
     for (x,y) in np.argwhere(gameEnv.mapState == 1):
-        rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
-                           blockSizex, blockSizey)
+        rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
+                           blockSize, blockSize)
         pygame.draw.rect(screen, (222,132,82), rect)
             
     # Draw snake head   
     for (x,y) in np.argwhere(gameEnv.mapState == 2):
-        rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
-                           blockSizex, blockSizey)
+        rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
+                           blockSize, blockSize)
         pygame.draw.rect(screen, (197,78,82), rect)
     
     # Draw fruit
     for (x,y) in np.argwhere(gameEnv.mapState == 3):
-        rect = pygame.Rect(offsetx + x*blockSizex, offsety + y*blockSizey,
-                           blockSizex, blockSizey)
+        rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
+                           blockSize, blockSize)
         pygame.draw.rect(screen, (76,114,176), rect)
 
 
@@ -46,7 +45,7 @@ def drawGrid(mapState, offsetx, offsety, width, height, nbBlockx, nbBlocky, scre
 def getKeyPressed():
     
     """
-    Wait until 'w', 'a', 's', 'd' is pressed and return the character.
+    Wait until 'w', 'a', 's', 'd' is pressed and return the character as a string.
     """
     
     pygame.event.clear()
@@ -75,20 +74,24 @@ def getKeyPressed():
 # Game
 #==============================================================================
 
+sizeX, sizeY = 10,5
+blockSize = 50
+offset = 50
+
+size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize)
+
 # Initialize the game environment
 
-gameEnv = env(10,10)
+gameEnv = env(sizeX,sizeY)
 gameEnv.printState()
 
 # Initialize the game window
 
-size = width, height = 600, 600
 screen = pygame.display.set_mode(size)
-
-grid = pygame.Rect(50,50,500,500)
-
 screen.fill((255,255,255))
-drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, screen)
+
+drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
+
 pygame.display.flip()
 
 #------------------------------------------------------------------------------
@@ -104,7 +107,7 @@ while gameEnv.gameOver == 0:
     
     # Update game window    
     screen.fill((255,255,255))
-    drawGrid(gameEnv.mapState, 50, 50, 500, 500, 10, 10, screen)
+    drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
     pygame.display.flip()
     
 #------------------------------------------------------------------------------
