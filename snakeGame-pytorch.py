@@ -69,28 +69,36 @@ class ReplayMemory(object):
 #------------------------------------------------------------------------------
 # Network    
     
-class Net(nn.Module):
+class Net(nn.Module): # For 3x10x10 input
 
     def __init__(self):
         super(Net, self).__init__()
         # 1 input image channel, 6 output channels, 3x3 square convolution
         # kernel
-        self.conv1 = nn.Conv2d(3, 6, 3)
+        # 3x10x10
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=6, kernel_size=3)
+        # 6x6x6
         self.conv2 = nn.Conv2d(6, 16, 3)
+        #16x4x4
         # an affine operation: y = Wx + b
-        self.fc1 = nn.Linear(16 * 6 * 6, 120)  # 6*6 from image dimension
+        self.fc1 = nn.Linear(16 * 6 * 6, 120)  
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 4)
 
     def forward(self, x):
         # Max pooling over a (2, 2) window
-        x = F.max_pool2d(F.relu(self.conv1(x)), (2, 2))
-        # If the size is a square you can only specify a single number
-        x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        x = F.relu(self.conv1(x))
+        # print(x.shape)
+        x = F.relu(self.conv2(x))
+        # print(x.shape)
         x = x.view(-1, self.num_flat_features(x))
+        # print(x.shape)
         x = F.relu(self.fc1(x))
+        # print(x.shape)
         x = F.relu(self.fc2(x))
+        # print(x.shape)
         x = self.fc3(x)
+        # print(x.shape)
         return x
 
     def num_flat_features(self, x):
@@ -135,7 +143,7 @@ def drawGrid(mapState, offset, blockSize, nbBlockx, nbBlocky, screen):
 #------------------------------------------------------------------------------
 # Initialize variables
 
-sizeX, sizeY = 32, 32    # Number of blocks width,height
+sizeX, sizeY = 10, 10    # Number of blocks width,height
 blockSize = 1          # Pixel width/height of a unit block
 offset = 0             # Pixel border
 
@@ -156,7 +164,7 @@ screen.fill((255,255,255))              # Fill map
 drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
 pygame.display.flip()   # Update full display to screen
 rawScreen = pygame.surfarray.array3d(screen)
-refinedScreen = rawScreen.reshape(1, 3, 32, 32) / 255
+refinedScreen = rawScreen.reshape(1, 3, sizeX, sizeY) / 255
 state = torch.tensor(refinedScreen, dtype=torch.float32)
 
 #==============================================================================
@@ -290,7 +298,7 @@ def optimize_model():
     optimizer.step()
     
 
-num_episodes = 10 # 50
+num_episodes = 50 # 50
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     gameEnv.reset()
@@ -298,7 +306,7 @@ for i_episode in range(num_episodes):
     drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
     pygame.display.flip()   # Update full display to screen
     rawScreen = pygame.surfarray.array3d(screen)
-    refinedScreen = rawScreen.reshape(1, 3, 32, 32) / 255
+    refinedScreen = rawScreen.reshape(1, 3, sizeX, sizeY) / 255
     state = torch.tensor(refinedScreen, dtype=torch.float32)
     
     for t in count():
@@ -332,7 +340,7 @@ for i_episode in range(num_episodes):
             drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
             pygame.display.flip()   # Update full display to screen
             rawScreen = pygame.surfarray.array3d(screen)
-            refinedScreen = rawScreen.reshape(1, 3, 32, 32) / 255
+            refinedScreen = rawScreen.reshape(1, 3, sizeX, sizeY) / 255
             next_state = torch.tensor(refinedScreen, dtype=torch.float32)
             # next_state = current_screen - last_screen
             # next_state = torch.tensor(gameEnv.mapState).cuda()

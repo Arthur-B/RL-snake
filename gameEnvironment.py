@@ -26,6 +26,10 @@ class env:
         [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
         env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
         
+        # Limit number of step (no turning in circle)
+        
+        env.maxMove = env.xSize * env.ySize * 2
+        env.availableMove = env.maxMove
         
     def reset(self):
         
@@ -53,6 +57,8 @@ class env:
         # Init the fruit position
         [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
         env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
+        
+        
 
         
     def printState(self):
@@ -122,8 +128,7 @@ class env:
         # Add new position to the snake    
         env.snake = np.append(env.snake, [[xNew, yNew]], axis=0)
 
-        # Update the map state
-        
+        # Update the map state        
         
         if env.mapState[xNew, yNew] == 1: # If stepping on another snake part
     
@@ -149,5 +154,12 @@ class env:
             env.newFruit(self)      # Spawn a new fruit
             env.reward = 100        # Maybe need to be tuned
             env.score += 1          # Update game score, different from RL reward
+            env.availableMove = env.maxMove # The number of move goes back up
+        
+        # Update the movement count
+        env.availableMove -= 1
+        
+        if env.availableMove == 0:
+            env.gameOver = 1
 
         return env.mapState, env.reward
