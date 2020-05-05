@@ -75,8 +75,8 @@ def getKeyPressed():
 # Initialize variables
 
 sizeX, sizeY = 10, 10    # Number of blocks width,height
-blockSize = 50          # Pixel width/height of a unit block
-offset = 50             # Pixel border
+blockSize = 1#50          # Pixel width/height of a unit block
+offset = 0#50             # Pixel border
 
 size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize) # Overall size of screen 
 
