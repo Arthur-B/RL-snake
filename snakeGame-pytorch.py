@@ -12,18 +12,23 @@ from numpy import argwhere
 
 import math
 import random
-import numpy as np
+# import numpy as np
+
 import matplotlib
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
+import pandas as pd
+
 from collections import namedtuple
 from itertools import count
-from PIL import Image
+# from PIL import Image
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import torchvision. transforms as T
+# import torchvision. transforms as T
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -229,23 +234,35 @@ def select_action(state):
 
 
 episode_durations = []
+episode_scores = []
 
 
 def plot_durations():
+    
     plt.figure(2)
     plt.clf()
-    durations_t = torch.tensor(episode_durations, dtype=torch.float)
-    plt.title('Training...')
+    
+    yPlot = pd.Series(episode_durations)
+    yPlot_mean = yPlot.rolling(50).mean()
+    
+    plt.subplot(2,1,1)
+    plt.plot(yPlot, '.')
+    plt.plot(yPlot_mean, label='Rolling mean (50)')
     plt.xlabel('Episode')
     plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+    plt.legend()
+    
+    yPlot = pd.Series(episode_scores)
+    yPlot_mean = yPlot.rolling(50).mean()
+    
+    plt.subplot(2,1,2)
+    plt.plot(yPlot, '.')
+    plt.plot(yPlot_mean, label='Rolling mean (50)')
+    plt.xlabel('Episode')
+    plt.ylabel('Score')
+    plt.legend()
 
-    plt.pause(0.001)  # pause a bit so that plots are updated
+    plt.pause(0.01)  # pause a bit so that plots are updated
     if is_ipython:
         display.clear_output(wait=True)
         display.display(plt.gcf())
@@ -298,7 +315,7 @@ def optimize_model():
     optimizer.step()
     
 
-num_episodes = 50 # 50
+num_episodes = 1000 # 50
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     gameEnv.reset()
@@ -357,18 +374,21 @@ for i_episode in range(num_episodes):
         optimize_model()
         if done:
             episode_durations.append(t + 1)
-            plot_durations()
+            episode_scores.append(gameEnv.score)
+            print("Episode:", i_episode, "Duration: ",t+1, 
+                  "Score: ", gameEnv.score, "\n")  
             break
-        
+      
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
         target_net.load_state_dict(policy_net.state_dict())
+        plot_durations()
+
 
 print('Complete')
-# env.render()
-# env.close()
 pygame.time.delay(5000)
 pygame.quit()
+plot_durations()
 plt.ioff()
 plt.show()    
     
