@@ -132,7 +132,7 @@ class env:
         
         if env.mapState[xNew, yNew] == 1: # If stepping on another snake part
     
-            env.reward = -100      # RL reward
+            env.reward = -1      # RL reward
             env.gameOver = 1
             print("Stepped on itself...")
     
@@ -145,7 +145,7 @@ class env:
             env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
             
             # env.reward = -1     # Reward as in RL reward, empty move loose time
-            env.reward = 1
+            env.reward = 0
             
         elif env.mapState[xNew, yNew] == 3:  # If snake reach a fruit
             # Do not erase oldest position
@@ -153,7 +153,8 @@ class env:
             env.mapState[env.snake[-2,0], env.snake[-2,1]] = 1  # Previous head is now body
             
             env.newFruit(self)      # Spawn a new fruit
-            env.reward = 100        # Maybe need to be tuned
+            # env.reward = 100        # Maybe need to be tuned
+            env.reward = 1        # Maybe need to be tuned
             env.score += 1          # Update game score, different from RL reward
             env.availableMove = env.maxMove # The number of move goes back up
         

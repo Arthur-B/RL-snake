@@ -112,6 +112,38 @@ class Net(nn.Module): # For 3x10x10 input
         for s in size:
             num_features *= s
         return num_features
+
+ 
+class NetFC(nn.Module): # For 3x10x10 input
+
+    def __init__(self):
+        super(NetFC, self).__init__()
+        # 1 input image channel, 6 output channels, 3x3 square convolution
+        # kernel
+        # 3x10x10
+
+        # an affine operation: y = Wx + b
+        self.fc1 = nn.Linear(3 * 10 * 10, 128)  
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 4)
+
+    def forward(self, x):
+        x = x.view(-1, self.num_flat_features(x))
+        # print(x.shape)
+        x = F.relu(self.fc1(x))
+        # print(x.shape)
+        x = F.relu(self.fc2(x))
+        # print(x.shape)
+        x = self.fc3(x)
+        # print(x.shape)
+        return x
+
+    def num_flat_features(self, x):
+        size = x.size()[1:]  # all dimensions except the batch dimension
+        num_features = 1
+        for s in size:
+            num_features *= s
+        return num_features
     
 
 #==============================================================================
@@ -200,8 +232,10 @@ n_actions = 4
 
 # policy_net = DQN(screen_height, screen_width, n_actions).to(device)
 # target_net = DQN(screen_height, screen_width, n_actions).to(device)
-policy_net = Net()
-target_net = Net()
+# policy_net = Net()
+# target_net = Net()
+policy_net = NetFC()
+target_net = NetFC()
 
 # # Test CUDA
 # policy_net.cuda()

@@ -14,3 +14,4 @@ While being playable, the game environment is structured with reinforcement lear
 
 * Haykin, Neural Networks and Learning Machines (3rd Ed), Chap. 12: Dynamic Programming
 * Pytorch DQN tutorial, https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+* Learning to play snake at 1 million PS,Oscar Knagg, https://towardsdatascience.com/learning-to-play-snake-at-1-million-fps-4aae8d36d2f1
