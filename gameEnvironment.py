@@ -26,6 +26,7 @@ class env:
         [xRandom, yRandom] = random.choice(np.argwhere(env.mapState==0))
         env.mapState[xRandom, yRandom] = 3  # Map is 3 where there is fruit
         
+        
     def reset(self):
         
         """
@@ -70,7 +71,6 @@ class env:
         Place a new fruit on the map
         """
         
-        # Need a solution for when the map is full (win)
         if(np.argwhere(env.mapState==0).size == 0):
             env.gameOver = 1
         else:
@@ -92,8 +92,8 @@ class env:
         -------
         mapState: np.array
             The state of the game
-        score
-            Score accumulated until this point
+        reward
+            The reward of this specific move
         """
         
         if keyPressed == 'a':
