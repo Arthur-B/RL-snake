@@ -2,13 +2,18 @@
 """
 Created on Mon May  4 17:05:55 2020
 
+To do:
+    Clean plot, add score / time
+    Move everyone to GPU tensor / scaling up
+    Down to 8*8 grid, clean up network architecture
+    Save / load, resume training of agent, etc.
+    Move to solid walls?
+
 @author: ArthurBaucour
 """
 
-# import gym
-import pygame
+
 from gameEnvironment import env # Import the game environment
-from numpy import argwhere
 
 import math
 import random
@@ -22,7 +27,6 @@ import pandas as pd
 
 from collections import namedtuple
 from itertools import count
-# from PIL import Image
 
 import torch
 import torch.nn as nn
@@ -80,30 +84,27 @@ class Net(nn.Module): # For 3x10x10 input
         super(Net, self).__init__()
         # 1 input image channel, 6 output channels, 3x3 square convolution
         # kernel
-        # 3x10x10
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=6, kernel_size=3)
+        # 1x10x10
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=4, kernel_size=3)
         # 6x6x6
-        self.conv2 = nn.Conv2d(6, 16, 3)
+        self.conv2 = nn.Conv2d(4, 8, 3)
         #16x4x4
         # an affine operation: y = Wx + b
-        self.fc1 = nn.Linear(16 * 6 * 6, 120)  
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 4)
+        self.fc1 = nn.Linear(288, 120)  # 288 = 8*6*6 but why this value?
+        self.fc2 = nn.Linear(120, 64)
+        self.fc3 = nn.Linear(64, 4)
 
     def forward(self, x):
         # Max pooling over a (2, 2) window
         x = F.relu(self.conv1(x))
-        # print(x.shape)
         x = F.relu(self.conv2(x))
-        # print(x.shape)
+        
         x = x.view(-1, self.num_flat_features(x))
-        # print(x.shape)
         x = F.relu(self.fc1(x))
-        # print(x.shape)
         x = F.relu(self.fc2(x))
-        # print(x.shape)
-        x = self.fc3(x)
-        # print(x.shape)
+        
+        x = F.softmax(self.fc3(x))
+
         return x
 
     def num_flat_features(self, x):
@@ -113,69 +114,12 @@ class Net(nn.Module): # For 3x10x10 input
             num_features *= s
         return num_features
 
- 
-class NetFC(nn.Module): # For 3x10x10 input
-
-    def __init__(self):
-        super(NetFC, self).__init__()
-        # 1 input image channel, 6 output channels, 3x3 square convolution
-        # kernel
-        # 3x10x10
-
-        # an affine operation: y = Wx + b
-        self.fc1 = nn.Linear(3 * 10 * 10, 128)  
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 4)
-
-    def forward(self, x):
-        x = x.view(-1, self.num_flat_features(x))
-        # print(x.shape)
-        x = F.relu(self.fc1(x))
-        # print(x.shape)
-        x = F.relu(self.fc2(x))
-        # print(x.shape)
-        x = self.fc3(x)
-        # print(x.shape)
-        return x
-
-    def num_flat_features(self, x):
-        size = x.size()[1:]  # all dimensions except the batch dimension
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features
-    
+   
 
 #==============================================================================
 # Game environment
 #==============================================================================
 
-#------------------------------------------------------------------------------
-# Draw grid
-
-def drawGrid(mapState, offset, blockSize, nbBlockx, nbBlocky, screen):
-    
-    """
-    Draw the mapState given the specifications.
-    """
-        
-    # Draw snake body        
-    for (x,y) in argwhere(gameEnv.mapState == 1):
-        rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
-                           blockSize, blockSize)
-        pygame.draw.rect(screen, (222,132,82), rect)
-            
-    # Draw snake head   
-    for (x,y) in argwhere(gameEnv.mapState == 2):
-        rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
-                           blockSize, blockSize)
-        pygame.draw.rect(screen, (197,78,82), rect)
-    
-    # Draw fruit
-    for (x,y) in argwhere(gameEnv.mapState == 3):
-        rect = pygame.Rect(offset + x*blockSize, offset + y*blockSize,
-                           blockSize, blockSize)
-        pygame.draw.rect(screen, (76,114,176), rect)
 
 #------------------------------------------------------------------------------
 # Initialize variables
@@ -193,16 +137,6 @@ gameEnv.printState()        # Print underlying matrix of game
 
 done = gameEnv.gameOver     # SHOULD BE CLEANED
 
-# Initialize the game window
-
-screen = pygame.display.set_mode(size)  # Create game window of given size
-
-screen.fill((255,255,255))              # Fill map
-drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
-pygame.display.flip()   # Update full display to screen
-rawScreen = pygame.surfarray.array3d(screen)
-refinedScreen = rawScreen.reshape(1, 3, sizeX, sizeY) / 255
-state = torch.tensor(refinedScreen, dtype=torch.float32)
 
 #==============================================================================
 # Training
@@ -211,31 +145,21 @@ state = torch.tensor(refinedScreen, dtype=torch.float32)
 #------------------------------------------------------------------------------
 ## Hyperparameters and utilities
 
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 # BATCH_SIZE = 512
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
+GAMMA = 0.99
+EPS_START = 1
+EPS_END = 0.1
 EPS_DECAY = 200
-TARGET_UPDATE = 10
+TARGET_UPDATE = 20
 
-# Get screen size so that we can initialize layers correctly based on shape
-# returned from AI gym. Typical dimensions at this point are close to 3x40x90
-# which is the result of a clamped and down-scaled render buffer in get_screen()
-# init_screen = get_screen()
-# _, _, screen_height, screen_width = init_screen.shape
-screen_height, screen_width = sizeX, sizeY
 
-# Get number of actions from gym action space
-# n_actions = env.action_space.n
 n_actions = 4
 
-# policy_net = DQN(screen_height, screen_width, n_actions).to(device)
-# target_net = DQN(screen_height, screen_width, n_actions).to(device)
-# policy_net = Net()
-# target_net = Net()
-policy_net = NetFC()
-target_net = NetFC()
+policy_net = Net()
+target_net = Net()
+# policy_net = Net().to(device)
+# target_net = Net().to(device)
 
 # # Test CUDA
 # policy_net.cuda()
@@ -245,11 +169,9 @@ target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
 optimizer = optim.RMSprop(policy_net.parameters())
-memory = ReplayMemory(10000)
-
+memory = ReplayMemory(100000)
 
 steps_done = 0
-
 
 def select_action(state):
     global steps_done
@@ -264,12 +186,10 @@ def select_action(state):
             # found, so we pick action with the larger expected reward.
             return policy_net(state).max(1)[1].view(1, 1)
     else:
-        return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
-
+        return torch.tensor([[random.randrange(n_actions)]], dtype=torch.long)
 
 episode_durations = []
 episode_scores = []
-
 
 def plot_durations():
     
@@ -316,7 +236,7 @@ def optimize_model():
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
+                                          batch.next_state)), dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state
                                                 if s is not None])
     state_batch = torch.cat(batch.state)
@@ -353,13 +273,8 @@ num_episodes = 1000 # 50
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     gameEnv.reset()
-    screen.fill((255,255,255))              # Fill map
-    drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
-    pygame.display.flip()   # Update full display to screen
-    rawScreen = pygame.surfarray.array3d(screen)
-    refinedScreen = rawScreen.reshape(1, 3, sizeX, sizeY) / 255
-    state = torch.tensor(refinedScreen, dtype=torch.float32)
-    
+    state = torch.tensor([[gameEnv.mapState]], dtype=torch.float32) # adjust dtype?
+        
     for t in count():
         # Select and perform an action
         action = select_action(state)
@@ -375,26 +290,13 @@ for i_episode in range(num_episodes):
         else:
             print('wrong input:', action[0] )
             
-        # gameEnv.moveSnake(keyPressed)
-        
-        # _, reward, done, _ = gameEnv.step(action.item())
         _, reward = gameEnv.moveSnake(keyPressed)
         
         done = gameEnv.gameOver
         reward = torch.tensor([reward], device=device)
 
-        # Observe new state
-        # last_screen = current_screen
-        # current_screen = get_screen()
         if not done:
-            screen.fill((255,255,255))              # Fill map
-            drawGrid(gameEnv.mapState, offset, blockSize, sizeX, sizeY, screen)
-            pygame.display.flip()   # Update full display to screen
-            rawScreen = pygame.surfarray.array3d(screen)
-            refinedScreen = rawScreen.reshape(1, 3, sizeX, sizeY) / 255
-            next_state = torch.tensor(refinedScreen, dtype=torch.float32)
-            # next_state = current_screen - last_screen
-            # next_state = torch.tensor(gameEnv.mapState).cuda()
+            next_state = torch.tensor([[gameEnv.mapState]], device=device, dtype=torch.float32)
         else:
             next_state = None
 
@@ -420,8 +322,6 @@ for i_episode in range(num_episodes):
 
 
 print('Complete')
-pygame.time.delay(5000)
-pygame.quit()
 plot_durations()
 plt.ioff()
 plt.show()    
