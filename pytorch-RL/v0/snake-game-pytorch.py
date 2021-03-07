@@ -13,7 +13,7 @@ To do:
 """
 
 
-from gameEnvironment import env # Import the game environment
+from game_environment_numpy import env  # Import the game environment
 
 import math
 import random
@@ -22,7 +22,7 @@ import random
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
-sns.set()
+
 import pandas as pd
 
 from collections import namedtuple
@@ -37,48 +37,50 @@ import torch.nn.functional as F
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
-    
-plt.ion() # Interactive mode
 
+plt.ion()   # Interactive mode
+sns.set()
 # If GPU with CUDA
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = "cpu"
 
 
-#==============================================================================
+# =============================================================================
 # DQN setup
-#==============================================================================
+# =============================================================================
 
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Replay memory
 
-Transition = namedtuple('Transition', 
+Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
+
 
 class ReplayMemory(object):
     def __init__(self, capacity):
         self.capacity = capacity
         self.memory = []
         self.position = 0
-        
+
     def push(self, *args):
         """Saves a transition"""
         if len(self.memory) < self.capacity:
             self.memory.append(None)
         self.memory[self.position] = Transition(*args)
         self.position = (self.position + 1) % self.capacity
-    
+
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)
-    
+
     def __len__(self):
         return len(self.memory)
 
-#------------------------------------------------------------------------------
-# Network    
-    
-class Net(nn.Module): # For 3x10x10 input
+
+# -----------------------------------------------------------------------------
+# Network
+
+class Net(nn.Module):   # For 3x10x10 input
 
     def __init__(self):
         super(Net, self).__init__()
@@ -88,7 +90,7 @@ class Net(nn.Module): # For 3x10x10 input
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=4, kernel_size=3)
         # 6x6x6
         self.conv2 = nn.Conv2d(4, 8, 3)
-        #16x4x4
+        # 16x4x4
         # an affine operation: y = Wx + b
         self.fc1 = nn.Linear(288, 120)  # 288 = 8*6*6 but why this value?
         self.fc2 = nn.Linear(120, 64)
@@ -98,11 +100,11 @@ class Net(nn.Module): # For 3x10x10 input
         # Max pooling over a (2, 2) window
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
-        
+
         x = x.view(-1, self.num_flat_features(x))
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        
+
         x = F.softmax(self.fc3(x))
 
         return x
@@ -114,36 +116,37 @@ class Net(nn.Module): # For 3x10x10 input
             num_features *= s
         return num_features
 
-   
 
-#==============================================================================
+# =============================================================================
 # Game environment
-#==============================================================================
+# =============================================================================
 
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Initialize variables
 
 sizeX, sizeY = 10, 10    # Number of blocks width,height
 blockSize = 1          # Pixel width/height of a unit block
 offset = 0             # Pixel border
 
-size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize) # Overall size of screen 
+# Overall size of screen
+size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize)
 
 # Initialize the game environment
 
-gameEnv = env(sizeX,sizeY)  # Initialize the map
+gameEnv = env(sizeX, sizeY)  # Initialize the map
 gameEnv.printState()        # Print underlying matrix of game
 
 done = gameEnv.gameOver     # SHOULD BE CLEANED
 
 
-#==============================================================================
+# =============================================================================
 # Training
-#==============================================================================
-    
-#------------------------------------------------------------------------------
-## Hyperparameters and utilities
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Hyperparameters and utilities
 
 BATCH_SIZE = 32
 # BATCH_SIZE = 512
@@ -152,7 +155,6 @@ EPS_START = 1
 EPS_END = 0.1
 EPS_DECAY = 200
 TARGET_UPDATE = 20
-
 
 n_actions = 4
 
@@ -173,12 +175,14 @@ memory = ReplayMemory(100000)
 
 steps_done = 0
 
+
 def select_action(state):
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
+
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
@@ -188,28 +192,29 @@ def select_action(state):
     else:
         return torch.tensor([[random.randrange(n_actions)]], dtype=torch.long)
 
+
 episode_durations = []
 episode_scores = []
 
+
 def plot_durations():
-    
     plt.figure(2)
     plt.clf()
-    
+
     yPlot = pd.Series(episode_durations)
     yPlot_mean = yPlot.rolling(50).mean()
-    
-    plt.subplot(2,1,1)
+
+    plt.subplot(2, 1, 1)
     plt.plot(yPlot, '.')
     plt.plot(yPlot_mean, label='Rolling mean (50)')
     plt.xlabel('Episode')
     plt.ylabel('Duration')
     plt.legend()
-    
+
     yPlot = pd.Series(episode_scores)
     yPlot_mean = yPlot.rolling(50).mean()
-    
-    plt.subplot(2,1,2)
+
+    plt.subplot(2, 1, 2)
     plt.plot(yPlot, '.')
     plt.plot(yPlot_mean, label='Rolling mean (50)')
     plt.xlabel('Episode')
@@ -220,10 +225,11 @@ def plot_durations():
     if is_ipython:
         display.clear_output(wait=True)
         display.display(plt.gcf())
-  
-#------------------------------------------------------------------------------
-## Training loop
-        
+
+
+# -----------------------------------------------------------------------------
+# Training loop
+
 def optimize_model():
     if len(memory) < BATCH_SIZE:
         return
@@ -236,9 +242,9 @@ def optimize_model():
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), dtype=torch.bool)
+                                  batch.next_state)), dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
+                                       if s is not None])
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
@@ -251,15 +257,16 @@ def optimize_model():
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
     # on the "older" target_net; selecting their best reward with max(1)[0].
-    # This is merged based on the mask, such that we'll have either the expected
-    # state value or 0 in case the state was final.
+    # This is merged based on the mask, such that we'll have either
+    # the expected state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
     # Compute Huber loss
-    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+    loss = F.smooth_l1_loss(state_action_values,
+                            expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
     optimizer.zero_grad()
@@ -267,14 +274,15 @@ def optimize_model():
     for param in policy_net.parameters():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
-    
 
-num_episodes = 1000 # 50
+
+num_episodes = 1000     # 50
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     gameEnv.reset()
-    state = torch.tensor([[gameEnv.mapState]], dtype=torch.float32) # adjust dtype?
-        
+    # adjust dtype?
+    state = torch.tensor([[gameEnv.mapState]], dtype=torch.float32)
+
     for t in count():
         # Select and perform an action
         action = select_action(state)
@@ -288,15 +296,16 @@ for i_episode in range(num_episodes):
         elif action[0] == 3:
             keyPressed = 'd'
         else:
-            print('wrong input:', action[0] )
-            
+            print('wrong input:', action[0])
+
         _, reward = gameEnv.moveSnake(keyPressed)
-        
+
         done = gameEnv.gameOver
         reward = torch.tensor([reward], device=device)
 
         if not done:
-            next_state = torch.tensor([[gameEnv.mapState]], device=device, dtype=torch.float32)
+            next_state = torch.tensor([[gameEnv.mapState]], device=device,
+                                      dtype=torch.float32)
         else:
             next_state = None
 
@@ -311,10 +320,10 @@ for i_episode in range(num_episodes):
         if done:
             episode_durations.append(t + 1)
             episode_scores.append(gameEnv.score)
-            print("Episode:", i_episode, "Duration: ",t+1, 
-                  "Score: ", gameEnv.score, "\n")  
+            print("Episode:", i_episode, "Duration: ", t+1,
+                  "Score: ", gameEnv.score, "\n")
             break
-      
+
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
         target_net.load_state_dict(policy_net.state_dict())
@@ -324,5 +333,4 @@ for i_episode in range(num_episodes):
 print('Complete')
 plot_durations()
 plt.ioff()
-plt.show()    
-    
+plt.show()
