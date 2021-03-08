@@ -1,5 +1,5 @@
+from game_environment.numpy import env
 import pygame
-from game_environment_numpy import env  # Import the game environment
 from numpy import argwhere
 
 
@@ -101,11 +101,8 @@ pygame.display.flip()   # Update full display to screen
 
 while gameEnv.gameOver == 0:
 
-    # Wait for a key press
-    keyPressed = getKeyPressed()
-
-    # Update the map state
-    mapState, _ = gameEnv.moveSnake(keyPressed)
+    keyPressed = getKeyPressed()    # Wait for a key press
+    mapState, _ = gameEnv.moveSnake(keyPressed)     # Update the map state
     gameEnv.printState()    # Print underlying matrix of game
 
     # Update game window

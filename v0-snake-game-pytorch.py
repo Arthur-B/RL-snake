@@ -13,7 +13,7 @@ To do:
 """
 
 
-from game_environment_numpy import env  # Import the game environment
+from game_environment.numpy import env  # Import the game environment
 
 import math
 import random
