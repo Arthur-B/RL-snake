@@ -1,4 +1,4 @@
-from game_environment.numpy import env
+from game_environment.numpy_no_parallel import env
 import pygame
 from numpy import argwhere
 
