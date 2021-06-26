@@ -85,10 +85,16 @@ class env:
     def moveSnake(self, keyPressed):
         # --------------------
         # Move the head [0, 1]
+
+        # self.mapState[0, 1] = \
+        #     F.conv2d(self.mapState[0, 1].unsqueeze_(0).unsqueeze_(0),
+        #              movement_filters[keyPressed].unsqueeze_(0),
+        #              padding=1)
+
         self.mapState[0, 1] = \
-            F.conv2d(self.mapState[0, 1].unsqueeze_(0).unsqueeze_(0),
-                     movement_filters[keyPressed].unsqueeze_(0),
-                     padding=1)
+            F.conv2d(self.mapState[0, 1].unsqueeze(0).unsqueeze(0),
+                     movement_filters[keyPressed].unsqueeze(0),
+                     padding=1).squeeze()
 
         # If the new head is on the fruit (growth)
         if ((self.mapState[0, 1] * self.mapState[0, 2]).max() == 1):
@@ -99,19 +105,20 @@ class env:
                                      * (self.mapState[0, 0] + 1).max())
 
             # Write reward
-            self.reward = 1
+            self.reward = 10
+            self.score += 1
 
         # If the new head is on the body (game over)
         elif ((self.mapState[0, 0] * self.mapState[0, 1]).max() != 0):
             self.reward = -1
             self.gameOver = 1
-            print('Stepped on itself')
+            # print('Stepped on itself')
 
         # If the head is out of bound (go through walls)
         elif (self.mapState[0, 1].max() == 0):
             self.reward = -1
             self.gameOver = 1
-            print('Hit the wall')
+            # print('Hit the wall')
 
         # Else, normal movement
         else:
@@ -120,7 +127,7 @@ class env:
             # New front position (with updated head)
             self.mapState[0, 0].add_(self.mapState[0, 1]
                                      * (self.mapState[0, 0] + 1).max())
-            self.reward = 0
+            self.reward = 1
 
         return self.mapState, self.reward
 
