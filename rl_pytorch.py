@@ -12,173 +12,68 @@ To do:
 @author: ArthurBaucour
 """
 
+# General DQN helper
+from helper import ReplayMemory, select_action, SnakeNet
+
 # Import the game environment
 from game_environment.torch_no_parallel import env
 
-import math
-import random
-# import numpy as np
-
 from collections import namedtuple
 from itertools import count
-
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-# import torchvision. transforms as T
-
-# If GPU with CUDA
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = "cpu"
 
 
 # =============================================================================
-# DQN setup
+# Setup
 # =============================================================================
 
+# GPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
-# -----------------------------------------------------------------------------
+# Game environment
+sizeX, sizeY = 10, 10           # Number of blocks width,height
+gameEnv = env(sizeX, sizeY)     # Initialize the map
+# done = gameEnv.gameOver     # SHOULD BE CLEANED
+
 # Replay memory
-
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
+memory = ReplayMemory(10000, Transition)
 
-
-class ReplayMemory(object):
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-        self.position = 0
-
-    def push(self, *args):
-        """Saves a transition"""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
-
-
-# -----------------------------------------------------------------------------
 # Network
+policy_net = SnakeNet().to(device)
+target_net = SnakeNet().to(device)
 
-class Net(nn.Module):   # For 3x10x10 input
+target_net.load_state_dict(policy_net.state_dict())
+target_net.eval()
 
-    def __init__(self):
-        super(Net, self).__init__()
-        # 3 input image channel, 6 output channels, 3x3 square convolution
-        # kernel
-        # 1x10x10
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=4, kernel_size=3)
-        # 6x6x6
-        self.conv2 = nn.Conv2d(4, 8, 3)
-        # 16x4x4
-        # an affine operation: y = Wx + b
-        self.fc1 = nn.Linear(288, 120)  # 288 = 8*6*6 but why this value?
-        self.fc2 = nn.Linear(120, 64)
-        self.fc3 = nn.Linear(64, 4)
-
-    def forward(self, x):
-        # Max pooling over a (2, 2) window
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-
-        x = x.view(-1, self.num_flat_features(x))
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-
-        x = F.softmax(self.fc3(x), dim=1)
-
-        return x
-
-    def num_flat_features(self, x):
-        size = x.size()[1:]  # all dimensions except the batch dimension
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features
-
-
-# =============================================================================
-# Game environment
-# =============================================================================
-
-
-# -----------------------------------------------------------------------------
-# Initialize variables
-
-sizeX, sizeY = 10, 10    # Number of blocks width,height
-blockSize = 1          # Pixel width/height of a unit block
-offset = 0             # Pixel border
-
-# Overall size of screen
-size = (offset * 2 + sizeX * blockSize, offset * 2 + sizeY * blockSize)
-
-# Initialize the game environment
-
-gameEnv = env(sizeX, sizeY)  # Initialize the map
-gameEnv.printState()        # Print underlying matrix of game
-
-done = gameEnv.gameOver     # SHOULD BE CLEANED
-
-
+# Loss and optimizer
+loss_fn = F.smooth_l1_loss
+# optimizer = optim.RMSprop(policy_net.parameters())
+optimizer = optim.Adam(policy_net.parameters(), lr=1e-4)
 # =============================================================================
 # Training
 # =============================================================================
 
 
 # -----------------------------------------------------------------------------
-# Hyperparameters and utilities
+# Hyperparameters
 
-BATCH_SIZE = 128
-# BATCH_SIZE = 512
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
-TARGET_UPDATE = 50
+num_episodes = int(1e5)     # 50
 
-n_actions = 4
+batch_size = 128
+gamma = 0.999
+eps_start = 0.9
+eps_end = 0.05
+eps_decay = 200
+target_update = 10
 
-policy_net = Net()
-target_net = Net()
-# policy_net = Net().to(device)
-# target_net = Net().to(device)
+# n_actions = 4
+n_actions = 3 # Left, forward, right
 
-# # Test CUDA
-# policy_net.cuda()
-# target_net.cuda()
-
-target_net.load_state_dict(policy_net.state_dict())
-target_net.eval()
-
-optimizer = optim.RMSprop(policy_net.parameters())
-memory = ReplayMemory(100000)
-
-steps_done = 0
-
-
-def select_action(state):
-    global steps_done
-    sample = random.random()
-    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
-    steps_done += 1
-
-    if sample > eps_threshold:
-        with torch.no_grad():
-            # t.max(1) will return largest column value of each row.
-            # second column on max result is index of where max element was
-            # found, so we pick action with the larger expected reward.
-            return policy_net(state).max(1)[1].view(1, 1)
-    else:
-        return torch.tensor([[random.randrange(n_actions)]], dtype=torch.long)
 
 
 
@@ -186,9 +81,10 @@ def select_action(state):
 # Training loop
 
 def optimize_model():
-    if len(memory) < BATCH_SIZE:
+    if len(memory) < batch_size:
         return
-    transitions = memory.sample(BATCH_SIZE)
+    transitions = memory.sample(batch_size)
+
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
@@ -200,6 +96,8 @@ def optimize_model():
                                   batch.next_state)), dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state
                                        if s is not None])
+
+    # Get the state/action/reward batch
     state_batch = torch.cat(batch.state)
     # action_batch = torch.cat(batch.action)
     action_batch = torch.tensor(batch.action).unsqueeze(1)
@@ -216,26 +114,25 @@ def optimize_model():
     # on the "older" target_net; selecting their best reward with max(1)[0].
     # This is merged based on the mask, such that we'll have either
     # the expected state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
+    next_state_values = torch.zeros(batch_size, device=device)
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
     next_state_values = next_state_values.unsqueeze(1)
+
     # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+    expected_state_action_values = (next_state_values * gamma) + reward_batch
 
     # Compute Huber loss
-    loss = F.smooth_l1_loss(state_action_values,
-                            expected_state_action_values)
+    loss = loss_fn(state_action_values, expected_state_action_values)
 
     # Optimize the model
     optimizer.zero_grad()
     loss.backward()
     for param in policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)
+        param.grad.data.clamp_(-1, 1)   # Clip the gradient to -1, 1
     optimizer.step()
 
 
-num_episodes = 10000     # 50
-
+steps_done = 0
 mean_score = []
 mean_duration = []
 
@@ -248,12 +145,16 @@ for i_episode in range(num_episodes):
     for t in count():
 
         # Select and perform an action
-        action = select_action(state).squeeze()
+        action = select_action(policy_net, n_actions, state, steps_done,
+                               eps_start, eps_end, eps_decay)
+        action = action.squeeze()
+
+        # Get the reward (ditch the map state, stored in gameEnv.mapState)
         _, reward = gameEnv.moveSnake(action)
+        reward = torch.tensor([reward], device=device) # Check the dimensions
 
+        # Check if game is over
         done = gameEnv.gameOver
-        reward = torch.tensor([reward], device=device)
-
         if not done:
             next_state = gameEnv.mapState
         else:
@@ -273,12 +174,12 @@ for i_episode in range(num_episodes):
             break
 
     # Update the target network, copying all weights and biases in DQN
-    if i_episode % TARGET_UPDATE == 0:
+    if i_episode % target_update == 0:
         target_net.load_state_dict(policy_net.state_dict())
 
-        print("[{}]\tMean duration: {:2.1f},\tMean score: {:3.1f}".format(
-            i_episode, sum(mean_duration) / TARGET_UPDATE,
-            sum(mean_score) / TARGET_UPDATE))
+        print("[{} / {}]\tMean duration: {:2.1f},\tMean score: {:3.1f}".format(
+            i_episode, num_episodes, sum(mean_duration) / target_update,
+            sum(mean_score) / target_update))
 
         mean_duration = []
         mean_score = []
