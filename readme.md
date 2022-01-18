@@ -13,6 +13,8 @@ While being playable, the game environment is structured with reinforcement lear
 
 # Results
 
+![](./images/training_process.png)
+
 # RL ressources
 
 * Haykin, Neural Networks and Learning Machines (3rd Ed), Chap. 12: Dynamic Programming
