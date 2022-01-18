@@ -1,6 +1,8 @@
-from game_environment.torch_no_parallel import env
 import pygame
-# import torch
+import torch
+
+from game_environment.torch_no_parallel import GameEnvTorch
+
 # from numpy import argwhere
 
 
@@ -24,14 +26,14 @@ def getKeyPressed():
             pygame.quit()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
-                keyPressed = 2
-            elif event.key == pygame.K_a:
                 keyPressed = 1
-            elif event.key == pygame.K_s:
+            elif event.key == pygame.K_a:
                 keyPressed = 0
+            # elif event.key == pygame.K_s:
+            #     keyPressed = 0
             elif event.key == pygame.K_d:
-                keyPressed = 3
-    return keyPressed
+                keyPressed = 2
+    return torch.tensor(keyPressed)
 
 
 # =============================================================================
@@ -41,22 +43,22 @@ def getKeyPressed():
 # -----------------------------------------------------------------------------
 # Initialize variables
 
-sizeX, sizeY = 10, 10    # Number of blocks width,height
+sizeX, sizeY = 5, 5    # Number of blocks width,height
 
 # Initialize the game environment
 
-gameEnv = env(sizeX, sizeY)  # Initialize the map
-gameEnv.printState()        # Print underlying matrix of game
+gameEnv = GameEnvTorch(sizeX, sizeY)  # Initialize the map
+gameEnv.print_state()        # Print underlying matrix of game
 
 screen = pygame.display.set_mode((100, 100))  # necessary to get keypressed
 # -----------------------------------------------------------------------------
 # Game loop
 
-while gameEnv.gameOver == 0:
+while gameEnv.game_over == 0:
 
     keyPressed = getKeyPressed()    # Wait for a key press
-    mapState, _ = gameEnv.moveSnake(keyPressed)     # Update the map state
-    gameEnv.printState()   # Print underlying matrix of game
+    mapState, _ = gameEnv.move_snake(keyPressed)     # Update the map state
+    gameEnv.print_state()   # Print underlying matrix of game
 
 
 # -----------------------------------------------------------------------------

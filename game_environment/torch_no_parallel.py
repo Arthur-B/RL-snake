@@ -7,10 +7,11 @@ Created on Tue Mar  9 00:40:07 2021
 @author: Arthur
 """
 
+import random
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-import random
 
 # Convolutions to move head in 4 directions
 # 0, 1, 2, 3 = bottom, left, top, right
@@ -48,14 +49,14 @@ dic_choose_tensor = {(0, 0): 3, (0, 1): 0, (0, 2): 1,
 # actions_onehot[torch.arange(4), torch.arange(4)] = 1
 
 
-class env:
-    def __init__(self, xSize=10, ySize=10):
+class GameEnvTorch:
+    def __init__(self, xSize=5, ySize=5):
         self.xSize, self.ySize = xSize, ySize
         self.reset()
 
     def reset(self):
 
-        self.gameOver = 0
+        self.game_over = 0
         self.score = 0
 
         # batch, channel (body, head, fruit), width, height
@@ -63,26 +64,25 @@ class env:
         self.mapState = torch.zeros((1, 3, self.xSize, self.ySize))
 
         # Define the starting snake position
-
-        self.mapState[0, 0, 3, 4] = 1   # Body
-        self.mapState[0, 0, 4, 4] = 2
-        self.mapState[0, 0, 5, 4] = 3
-
-        self.mapState[0, 1, 5, 4] = 1   # Head
+        self.mapState[0, 0, 1, 2] = 1   # Body
+        self.mapState[0, 0, 2, 2] = 2
+        self.mapState[0, 0, 3, 2] = 3
+        self.mapState[0, 1, 3, 2] = 1   # Head
 
         # Body direction
         self.body_direction = 0    # Body starts toward bottom
 
         # Define the fruit position
-        self.newFruit()
+        self.place_fruit()
 
-    def newFruit(self):
+    def place_fruit(self):
         """
         Place a new fruit on the map
         """
+
         # If no empty space to put the fruit (no snake body), game over
         if(np.argwhere(self.mapState[0, 0, :, :].numpy() == 0).size == 0):
-            env.gameOver = 1
+            self.game_over = 1
         else:
             # Reinitialize the fruit map
             self.mapState[0, 2] = torch.zeros((self.xSize, self.ySize))
@@ -92,22 +92,14 @@ class env:
             # Place a fruit in that random location
             self.mapState[0, 2, xRandom, yRandom] = 1
 
-    def moveSnake(self, keyPressed):
-        # --------------------
-        # Move the head [0, 1]
-
-        # self.mapState[0, 1] = \
-        #     F.conv2d(self.mapState[0, 1].unsqueeze_(0).unsqueeze_(0),
-        #              movement_filters[keyPressed].unsqueeze_(0),
-        #              padding=1)
-
-        # ADD A CHECK TO SEE IF MOVE BACKWARD TO CHANGE KEYPRESSED OR NOT
-
+    def move_snake(self, keyPressed):
+       
         keyPressed = keyPressed.item()
 
         action = dic_choose_tensor[self.body_direction, keyPressed]
         self.body_direction = action
-
+        
+        # Move the head
         self.mapState[0, 1] = \
             F.conv2d(self.mapState[0, 1].unsqueeze(0).unsqueeze(0),
                      movement_filters[action].unsqueeze(0),
@@ -116,7 +108,7 @@ class env:
         # If the new head is on the fruit (growth)
         if ((self.mapState[0, 1] * self.mapState[0, 2]).max() == 1):
             # Place a new fruit
-            self.newFruit()
+            self.place_fruit()
             # Add a body where is the updated head)
             self.mapState[0, 0].add_(self.mapState[0, 1]
                                      * (self.mapState[0, 0] + 1).max())
@@ -128,13 +120,13 @@ class env:
         # If the new head is on the body (game over)
         elif ((self.mapState[0, 0] * self.mapState[0, 1]).max() != 0):
             self.reward = -1
-            self.gameOver = 1
+            self.game_over = 1
             # print('Stepped on itself')
 
         # If the head is out of bound (go through walls)
         elif (self.mapState[0, 1].max() == 0):
             self.reward = -1
-            self.gameOver = 1
+            self.game_over = 1
             # print('Hit the wall')
 
         # Else, normal movement
@@ -148,36 +140,29 @@ class env:
 
         return self.mapState, self.reward
 
-    def printState(self):
+    def print_state(self):
         print((self.mapState[0, 0] - self.mapState[0, 2]).int())
 
-# sizeX, sizeY = 10, 10    # Number of blocks width,height
 
-# # Initialize the game environment
+# =========================================================================
+# Check inputs
+# =========================================================================
 
-# gameEnv = env(sizeX, sizeY)  # Initialize the map
+# def main():
 
+#     sizeX, sizeY = 5, 5           # Number of blocks width,height
+#     gameEnv = GameEnvTorch(sizeX, sizeY)
+#     gameEnv.printState()
 
-def main():
-    sizeX, sizeY = 10, 10           # Number of blocks width,height
-    gameEnv = env(sizeX, sizeY)
-    gameEnv.printState()
+#     # 0, 1, 2, 3 = bottom, left, top, right
+#     inputs = [0, 1, 2, 2]
 
-    # =========================================================================
-    # Check inputs
-    # =========================================================================
-
-    # 0, 1, 2, 3 = bottom, left, top, right
-
-    inputs = [0, 1, 2, 2, 3]
-
-    for inp in inputs:
-        gameEnv.moveSnake(torch.tensor(inp))
-        # gameEnv.printState()
-        print("\n\nInput:\t", inp, "\n")
-        print(gameEnv.mapState)
+#     for inp in inputs:
+#         gameEnv.moveSnake(torch.tensor(inp))
+#         # gameEnv.printState()
+#         print("\n\nInput:\t", inp, "\n")
+#         print(gameEnv.mapState)
 
 
-
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
