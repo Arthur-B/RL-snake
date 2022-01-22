@@ -6,13 +6,15 @@ Created on Mon Jun 28 19:01:12 2021
 """
 
 import math
+import os
 import random
 from collections import deque
 
+import imageio
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-
-# import seaborn as sns
 import torch
 import torch.nn as nn
 
@@ -22,8 +24,7 @@ import torch.nn as nn
 
 
 class ReplayMemory(object):
-    """
-    """
+    """ """
 
     def __init__(self, capacity, Transition):
         self.Transition = Transition
@@ -145,6 +146,42 @@ def make_plot(x_plot, duration_list, score_list):
     return fig, axs
 
 
+def plot_game_state(game_state, file_name):
+    # Build the plot
+    fig, ax = plt.subplots(figsize=(3.33, 3.33), dpi=300)
+    ax.axis("off")
+
+    # Segment the game state
+    matrix_plot = (game_state[0, 0] - game_state[0, 2]).numpy()
+    fruit = np.ma.masked_where(matrix_plot != -1, matrix_plot)
+    snake = np.ma.masked_where(matrix_plot < 0, matrix_plot)
+
+    # Add the matrix
+
+    ax.imshow(fruit, cmap=cm.Set1, interpolation="none")
+    ax.imshow(
+        snake,
+        cmap=cm.viridis,
+        interpolation="none",
+        vmin=0,
+    )
+
+    # Save
+    fig.tight_layout()
+    fig.savefig(file_name)
+    plt.close(fig)
+
+
+def make_gif(filenames: list, name: str):
+    with imageio.get_writer(name + ".gif", mode="I") as writer:
+        for filename in filenames:
+            image = imageio.imread(filename)
+            writer.append_data(image)
+
+    for filename in set(filenames):
+        os.remove(filename)
+
+
 # =============================================================================
 # Main
 # =============================================================================
@@ -159,4 +196,3 @@ def make_plot(x_plot, duration_list, score_list):
 
 # if __name__ == '__main__':
 #     main()
-

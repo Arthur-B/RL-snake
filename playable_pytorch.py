@@ -2,6 +2,7 @@ import pygame
 import torch
 
 from game_environment.torch_no_parallel import GameEnvTorch
+from helper import make_gif, plot_game_state
 
 # from numpy import argwhere
 
@@ -55,15 +56,24 @@ screen = pygame.display.set_mode((100, 100))  # necessary to get keypressed
 # -----------------------------------------------------------------------------
 # Game loop
 
+i = 0
+filenames = []
 while gameEnv.game_over == 0:
+    filename = f".\\images\\temp\\state_{i}.png"
+    # Plot the map
+    plot_game_state(gameEnv.mapState, filename)
+    filenames.append(filename)
+    i += 1
 
+    # Update the game
     keyPressed = getKeyPressed()  # Wait for a key press
     mapState, _ = gameEnv.move_snake(keyPressed)  # Update the map state
     gameEnv.print_state()  # Print underlying matrix of game
-
 
 # -----------------------------------------------------------------------------
 # Exit
 
 pygame.time.delay(5000)
 pygame.quit()
+
+make_gif(filenames, ".\\images\\played.gif")
