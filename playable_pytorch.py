@@ -9,6 +9,7 @@ from game_environment.torch_no_parallel import GameEnvTorch
 # -----------------------------------------------------------------------------
 # Get key pressed
 
+
 def getKeyPressed():
     """
     Wait until 'w', 'a', 's', 'd' is pressed and return the character
@@ -43,12 +44,12 @@ def getKeyPressed():
 # -----------------------------------------------------------------------------
 # Initialize variables
 
-sizeX, sizeY = 5, 5    # Number of blocks width,height
+sizeX, sizeY = 5, 5  # Number of blocks width,height
 
 # Initialize the game environment
 
 gameEnv = GameEnvTorch(sizeX, sizeY)  # Initialize the map
-gameEnv.print_state()        # Print underlying matrix of game
+gameEnv.print_state()  # Print underlying matrix of game
 
 screen = pygame.display.set_mode((100, 100))  # necessary to get keypressed
 # -----------------------------------------------------------------------------
@@ -56,9 +57,9 @@ screen = pygame.display.set_mode((100, 100))  # necessary to get keypressed
 
 while gameEnv.game_over == 0:
 
-    keyPressed = getKeyPressed()    # Wait for a key press
-    mapState, _ = gameEnv.move_snake(keyPressed)     # Update the map state
-    gameEnv.print_state()   # Print underlying matrix of game
+    keyPressed = getKeyPressed()  # Wait for a key press
+    mapState, _ = gameEnv.move_snake(keyPressed)  # Update the map state
+    gameEnv.print_state()  # Print underlying matrix of game
 
 
 # -----------------------------------------------------------------------------

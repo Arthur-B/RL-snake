@@ -19,11 +19,22 @@ import torch.optim as optim
 
 # Import the game environment
 from game_environment.torch_no_parallel import GameEnvTorch
+
 # General DQN helper
 from helper import ReplayMemory, SnakeNet, make_plot, select_action
 
 
-def optimize_model(policy_net, target_net, optimizer, loss_fn, gamma, memory, batch_size, Transition, device):
+def optimize_model(
+    policy_net,
+    target_net,
+    optimizer,
+    loss_fn,
+    gamma,
+    memory,
+    batch_size,
+    Transition,
+    device,
+):
     if len(memory) < batch_size:
         return
     transitions = memory.sample(batch_size)
@@ -35,10 +46,10 @@ def optimize_model(policy_net, target_net, optimizer, loss_fn, gamma, memory, ba
 
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                  batch.next_state)), dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                       if s is not None])
+    non_final_mask = torch.tensor(
+        tuple(map(lambda s: s is not None, batch.next_state)), dtype=torch.bool
+    )
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
 
     # Get the state/action/reward batch
     state_batch = torch.cat(batch.state).to(device)
@@ -56,8 +67,9 @@ def optimize_model(policy_net, target_net, optimizer, loss_fn, gamma, memory, ba
     # This is merged based on the mask, such that we'll have either
     # the expected state value or 0 in case the state was final.
     next_state_values = torch.zeros(batch_size, device=device)
-    next_state_values[non_final_mask] = \
+    next_state_values[non_final_mask] = (
         target_net(non_final_next_states).max(1)[0].detach()
+    )
     next_state_values = next_state_values.unsqueeze(1)
 
     # Compute the expected Q values
@@ -70,7 +82,7 @@ def optimize_model(policy_net, target_net, optimizer, loss_fn, gamma, memory, ba
     optimizer.zero_grad()
     loss.backward()
     for param in policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)   # Clip the gradient to -1, 1
+        param.grad.data.clamp_(-1, 1)  # Clip the gradient to -1, 1
     optimizer.step()
 
 
@@ -78,30 +90,33 @@ def main():
     # -------------------------------------------------------------------------
     # Setup
 
+    # loading/saving path
+
+    SAVE_PATH = ".\\models"
+
     # Hyper-parameters
 
-    num_episodes = 1000     # 50, int(1e5)
+    num_episodes = 50  # 50, int(1e5)
 
-    batch_size = 128 # 128
+    batch_size = 128  # 128
     gamma = 0.999
     eps_start = 0.9
     eps_end = 0.05
-    eps_decay = 1000 # 200
+    eps_decay = 1000  # 200
     target_update = 10
 
-    n_actions = 3   # Left, forward, right
+    n_actions = 3  # Left, forward, right
 
     # GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f'\nTraining on: {device} ({torch.cuda.get_device_name(0)})\n')
+    print(f"\nTraining on: {device} ({torch.cuda.get_device_name(0)})\n")
 
     # Game environment
-    sizeX, sizeY = 5, 5           # Number of blocks width,height
-    gameEnv = GameEnvTorch(sizeX, sizeY)     # Initialize the map
+    sizeX, sizeY = 5, 5  # Number of blocks width,height
+    gameEnv = GameEnvTorch(sizeX, sizeY)  # Initialize the map
 
     # Replay memory
-    Transition = namedtuple('Transition',
-                            ('state', 'action', 'next_state', 'reward'))
+    Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
     memory = ReplayMemory(10000, Transition)
 
     # Networks
@@ -117,7 +132,7 @@ def main():
 
     # -------------------------------------------------------------------------
     # Training
-    
+
     steps_done = 0
     mean_score = []
     mean_duration = []
@@ -136,8 +151,9 @@ def main():
         for t in count():
 
             # Select and perform an action
-            action = select_action(policy_net, n_actions, state, steps_done,
-                                   eps_start, eps_end, eps_decay)
+            action = select_action(
+                policy_net, n_actions, state, steps_done, eps_start, eps_end, eps_decay
+            )
             action = action.squeeze()
             steps_done += 1
 
@@ -160,8 +176,17 @@ def main():
             state = next_state
 
             # Perform one step of the optimization (on the target network)
-            optimize_model(policy_net, target_net, optimizer, loss_fn, 
-                           gamma, memory, batch_size, Transition, device)
+            optimize_model(
+                policy_net,
+                target_net,
+                optimizer,
+                loss_fn,
+                gamma,
+                memory,
+                batch_size,
+                Transition,
+                device,
+            )
             if done:
                 mean_score.append(gameEnv.score)
                 mean_duration.append(t + 1)
@@ -174,9 +199,11 @@ def main():
             mean_display = sum(mean_duration) / target_update
             score_display = sum(mean_score) / target_update
 
-            print(f"[{i_episode} / {num_episodes}]\t" \
-                + f"Mean duration: {mean_display:2.1f}\t" \
-                + f"Mean score: {score_display:3.1f}")
+            print(
+                f"[{i_episode} / {num_episodes}]\t"
+                + f"Mean duration: {mean_display:2.1f}\t"
+                + f"Mean score: {score_display:3.1f}"
+            )
 
             mean_duration = []
             mean_score = []
@@ -184,11 +211,10 @@ def main():
             duration_plot.append(mean_display)
             score_plot.append(score_display)
             x_plot.append(i_episode)
-        
 
     make_plot(x_plot, duration_plot, score_plot)
-    print('Complete')
+    print("Complete")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
