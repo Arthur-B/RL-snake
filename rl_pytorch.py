@@ -16,12 +16,13 @@ from itertools import count
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from tqdm import tqdm
 
 # Import the game environment
 from game_environment.torch_no_parallel import GameEnvTorch
 
 # General DQN helper
-from helper import ReplayMemory, SnakeNet, make_plot, select_action
+from helper import ReplayMemory, SnakeNet, make_plot, play_game, select_action
 
 
 def optimize_model(
@@ -96,14 +97,16 @@ def main():
 
     # Hyper-parameters
 
-    num_episodes = 50  # 50, int(1e5)
+    num_episodes = 10000  # 50, int(1e5)
 
     batch_size = 128  # 128
     gamma = 0.999
     eps_start = 0.9
     eps_end = 0.05
     eps_decay = 1000  # 200
-    target_update = 10
+
+    target_update = 100  # Update the values of the policy network
+    record_interval = 500  # Interval to make plots and gifs
 
     n_actions = 3  # Left, forward, right
 
@@ -134,14 +137,12 @@ def main():
     # Training
 
     steps_done = 0
-    mean_score = []
-    mean_duration = []
 
-    score_plot = []
-    duration_plot = []
+    mean_score_list = []
+    mean_duration_list = []
     x_plot = []
 
-    for i_episode in range(num_episodes):
+    for i_episode in tqdm(range(num_episodes)):
         # Initialize the environment and state
         gameEnv.reset()
         # adjust dtype?
@@ -188,31 +189,46 @@ def main():
                 device,
             )
             if done:
-                mean_score.append(gameEnv.score)
-                mean_duration.append(t + 1)
                 break
 
         # Update the target network, copying all weights and biases in DQN
         if i_episode % target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
 
-            mean_display = sum(mean_duration) / target_update
-            score_display = sum(mean_score) / target_update
+        if (i_episode % record_interval == 0) and (i_episode != 0):
+
+            duration_list = []
+            score_list = []
+
+            # Record one game
+            gif_name = f"episode_{i_episode}"
+            duration, score = play_game(
+                target_net, gameEnv, device, record=True, gif_name=gif_name
+            )
+
+            duration_list.append(duration)
+            score_list.append(score)
+
+            # Play 9 other games for statistic purpose
+            for _ in range(1, 10):
+                duration, score = play_game(target_net, gameEnv, device, record=False)
+                duration_list.append(duration)
+                score_list.append(score)
+
+            mean_duration = sum(duration_list) / len(duration_list)
+            mean_score = sum(score_list) / len(score_list)
+
+            mean_duration_list.append(mean_duration)
+            mean_score_list.append(mean_score)
+            x_plot.append(i_episode)
 
             print(
                 f"[{i_episode} / {num_episodes}]\t"
-                + f"Mean duration: {mean_display:2.1f}\t"
-                + f"Mean score: {score_display:3.1f}"
+                + f"Mean duration: {mean_duration:2.1f}\t"
+                + f"Mean score: {mean_score:3.1f}"
             )
 
-            mean_duration = []
-            mean_score = []
-
-            duration_plot.append(mean_display)
-            score_plot.append(score_display)
-            x_plot.append(i_episode)
-
-    make_plot(x_plot, duration_plot, score_plot)
+    make_plot(x_plot, mean_duration_list, mean_score_list)
     print("Complete")
 
 

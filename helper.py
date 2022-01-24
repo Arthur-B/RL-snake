@@ -152,7 +152,7 @@ def plot_game_state(game_state, file_name):
     ax.axis("off")
 
     # Segment the game state
-    matrix_plot = (game_state[0, 0] - game_state[0, 2]).numpy()
+    matrix_plot = (game_state[0, 0] - game_state[0, 2]).cpu().numpy()
     fruit = np.ma.masked_where(matrix_plot != -1, matrix_plot)
     snake = np.ma.masked_where(matrix_plot < 0, matrix_plot)
 
@@ -182,17 +182,34 @@ def make_gif(filenames: list, name: str):
         os.remove(filename)
 
 
-# =============================================================================
-# Main
-# =============================================================================
+def play_game(policy_net, game_env, device, record=False, gif_name="temp"):
+    # Initialize and get the current state of the game
+    game_env.reset()
+    state = game_env.mapState.to(device)
 
+    duration = 0
+    if record == True:
+        filenames = []
+        # record the initial game state
+        plot_game_state(state, ".\\images\\temp\\state_0.png")
 
-# def main():
-#     net = SnakeNet()
+    while game_env.game_over == 0:
+        # Select action following policy net, no randomness
+        action = policy_net(state).max(1)[1].view(1, 1)
+        # Move the snake
+        state, _ = game_env.move_snake(action)
+        state = state.to(device)
 
-#     test = torch.rand(1, 3, 5, 5)
-#     out = net(test)
+        # Save the new state
+        duration += 1
+        if record == True:
+            filename = f".\\images\\temp\\state_{duration}.png"
+            plot_game_state(state, filename)
+            filenames.append(filename)
 
+    # Make the gif
+    if record == True:
+        gif_path = f".\\images\\{gif_name}"
+        make_gif(filenames, gif_path)
 
-# if __name__ == '__main__':
-#     main()
+    return duration, game_env.score
